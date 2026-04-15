@@ -1,4 +1,4 @@
-#include "serial.hpp"
+#include <serial/serial.hpp>
 
 #include <fcntl.h>
 #include <unistd.h>
