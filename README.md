@@ -1,6 +1,5 @@
-# serial.hpp
-
-> A lightweight C++ library for serial port communication on Linux.
+# serial.h
+> A lightweight C library for serial port communication on Linux.
 
 Started as an internal utility to simplify serial port communication in day-to-day tooling at work. Used it once, liked the concept, and decided it was worth building out properly: a structured build system, and room to grow into something more reusable and robust.
 
@@ -9,19 +8,17 @@ It wraps the Linux termios API to provide simple `read`/`write` functions over s
 ---
 
 ## Features
-
 - Simple one-call write and read interface
 - Automatic port configuration (baud rate, parity, stop bits, flow control)
-- Raw I/O mode - no byte processing or line-buffering by the OS
+- Raw I/O mode — no byte processing or line-buffering by the OS
 - 2-second read timeout with incremental buffered reads
-- Error reporting via stderr for invalid or non-serial ports
+- Typed error codes via `serial_err_t` for precise failure handling
 
 ---
 
 ## Requirements
-
 - Linux (uses POSIX termios API)
-- C++17 or later
+- C17 or later
 - CMake 3.23+
 
 ---
@@ -29,7 +26,6 @@ It wraps the Linux termios API to provide simple `read`/`write` functions over s
 ## Installation
 
 ### Clone and build
-
 ```bash
 git clone https://github.com/yourname/serial.git
 cd serial
@@ -38,7 +34,6 @@ cmake --build build -j$(nproc)
 ```
 
 ### Using as a subdirectory in your project
-
 ```cmake
 add_subdirectory(serial)
 target_link_libraries(your_target PRIVATE serial)
@@ -49,25 +44,28 @@ target_link_libraries(your_target PRIVATE serial)
 ## Usage
 
 ### Writing to a port
-
-```cpp
-#include <serial/serial.hpp>
+```c
+#include "serial.h"
 
 int main() {
     const char* msg = "hello";
-    serial::write("/dev/ttyUSB0", msg, 5);
+    serial_err_t err = serial_write("/dev/ttyUSB0", msg, 5);
+    if (err != SERIAL_OK) {
+        // handle error
+    }
 }
 ```
 
 ### Reading from a port
-
-```cpp
-#include <serial/serial.hpp>
+```c
+#include "serial.h"
 
 int main() {
     char buf[64] = {};
-    ssize_t n = serial::read("/dev/ttyUSB0", buf, sizeof(buf));
-    // buf now contains up to n bytes
+    serial_err_t err = serial_read("/dev/ttyUSB0", buf, sizeof(buf));
+    if (err != SERIAL_OK) {
+        // handle error
+    }
 }
 ```
 
@@ -75,19 +73,31 @@ int main() {
 
 ---
 
+## Error Codes
+
+| Code                  | Meaning                                       |
+|-----------------------|-----------------------------------------------|
+| `SERIAL_OK`           | Success                                       |
+| `SERIAL_OPEN_FAIL`    | `open()` failed (port not found, permissions) |
+| `SERIAL_INVALID_TTY`  | File descriptor is not a serial TTY           |
+| `SERIAL_READ_ERR`     | `read()` returned an error                    |
+| `SERIAL_WRITE_ERR`    | `write()` returned an error                   |
+
+---
+
 ## Default Serial Configuration
 
 Both functions apply the following settings automatically:
 
-| Parameter      | Value                          |
-|----------------|--------------------------------|
-| Baud rate      | 9600                           |
-| Data bits      | 8                              |
-| Stop bits      | 1                              |
-| Parity         | None                           |
-| Flow control   | None (no RTS/CTS)              |
-| Read timeout   | 2 seconds (VTIME = 20)         |
-| Read mode      | Non-blocking minimum (VMIN = 0)|
+| Parameter      | Value                           |
+|----------------|---------------------------------|
+| Baud rate      | 9600                            |
+| Data bits      | 8                               |
+| Stop bits      | 1                               |
+| Parity         | None                            |
+| Flow control   | None (no RTS/CTS)               |
+| Read timeout   | 2 seconds (VTIME = 20)          |
+| Read mode      | Non-blocking minimum (VMIN = 0) |
 
 ---
 
@@ -103,11 +113,10 @@ sudo socat -d -d \
 
 Then write to one end and read from the other:
 
-```cpp
-serial::write("/dev/ttyV0", "ping", 4);
-
+```c
+serial_write("/dev/ttyV0", "ping", 4);
 char buf[16] = {};
-serial::read("/dev/ttyV1", buf, sizeof(buf));
+serial_read("/dev/ttyV1", buf, sizeof(buf));
 ```
 
 ---
@@ -117,12 +126,10 @@ serial::read("/dev/ttyV1", buf, sizeof(buf));
 The library is functional but still early. The following improvements are planned:
 
 - **`SerialConfig` struct** — define baud rate, parity, stop bits, and timeout once and pass it to both `read` and `write`, instead of hardcoding defaults inside each function
-- **Error codes** — return typed error codes instead of relying solely on stderr output
 - **Non-blocking mode** — optional async read support
 - **Configurable timeout** — expose `VMIN` and `VTIME` through the config struct
 
 ---
 
 ## License
-
 MIT License. See [LICENSE](LICENSE) for details.
